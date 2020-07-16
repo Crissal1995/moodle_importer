@@ -41,6 +41,7 @@ class Question:
 class Module:
     def __init__(self, name):
         name = ' '.join(name.split('(')[:-1]).strip()
+        name = name.replace('/', ' e ')
         self.name = ' '.join([w.capitalize() for w in name.split()])
         self.questions = []
 
