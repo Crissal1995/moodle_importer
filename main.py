@@ -1,9 +1,10 @@
 from collections import defaultdict
 from xml_builder import make_xml
+import string
 import docx
 from model import *
 
-filepath = 'domande.docx'
+filepath = 'domande_old.docx'
 doc = docx.Document(filepath)
 
 unities = []
@@ -44,10 +45,20 @@ for paragraph in doc.paragraphs:
         answer = Answer(t)
         question_before.add_answer(answer)
 
+    elif t.lower().replace('*', '').strip().startswith('slide'):
+        assert question_before, 'Found jump to slide without question!'
+        slide_pages = [el.replace('.', '').strip() for el in t.lower().split('n')[1:]]
+        slide_pages = ' '.join(slide_pages).split('-')
+        slide_pages = set([el.strip() for el in slide_pages for char in el if char in string.digits])
+        question_before.set_jump2slides(slide_pages)
+        print(question_before)
+        print()
+
 # assert di correttezza del word parserizzato
 for i, unity in enumerate(unities):
     unity.check()
 
+# generazione di un xml per ogni modulo
 for unity in unities:
     for module in unity.modules:
         i, j = unity.number, module.number

@@ -23,6 +23,12 @@ class Question:
         self.number = number
         self.answers = []
         self.module = module
+        self.jump2slides = None
+        self.jump2slide = None
+
+    def set_jump2slides(self, j2s):
+        self.jump2slides = j2s
+        self.jump2slide = min(j2s)
 
     def add_answer(self, answer):
         self.answers.append(answer)
@@ -38,6 +44,16 @@ class Question:
         count_correct = sum(1 for ans in self.answers if ans.is_correct)
         assert count_correct > 0, 'No correct answer found. [{}]'.format(where)
         assert count_correct == 1, 'More than one correct answer found. [{}]'.format(where)
+
+    def __str__(self):
+        s = 'DOMANDA {n}: {text}\n'.format(n=self.number + 1, text=self.name)
+        for ans in self.answers:
+            s += 'RISPOSTA{e}: {r}\n'.format(
+                e=' ESATTA' if ans.is_correct else '',
+                r=ans.text
+            )
+        s += 'SE ERRORE, SALTA A {}'.format(self.jump2slide)
+        return s
 
 
 class Module:
