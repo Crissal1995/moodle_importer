@@ -5,32 +5,34 @@ class Answer:
     def __init__(self, string):
         string = string.strip()
         self.text = '-'.join(string.split('-')[1:]).strip()
+
         self.is_correct = 'ok' in string.lower().split('-')[0]
-        self.html = '<p>{}</p>'.format(html.escape(self.text, False))
+
+        self.html_escaped = '<p>{}</p>'.format(html.escape(self.text, False))
+        self.html = '<p>{}</p>'.format(self.text)
+
         if self.is_correct:
-            self.html = '<input type="hidden" id="Corretta">\n' + self.html
+            to_add = '<input type="hidden" id="Corretta">\n'
+            self.html_escaped = to_add + self.html_escaped
+            self.html = to_add + self.html
 
 
 class Question:
-    def __init__(self, name):
+    def __init__(self, name, number, module):
         self.name = name.strip()
+        self.number = number
         self.answers = []
-
-    def set_answers(self, answers):
-        self.answers = [a for a in answers]
+        self.module = module
 
     def add_answer(self, answer):
         self.answers.append(answer)
 
-    def check(self, unity=None, module=None):
-        where = ' question ' + self.name
-        if module is not None:
-            where = ' module ' + str(module + 1) + where
-        if unity is not None:
-            where = ' uf ' + str(unity + 1) + where
-
-        where = where.strip()
-
+    def check(self):
+        where = 'uf: {u}, module: {m}, question: {q}'.format(
+            u=self.module.unity.number + 1,
+            m=self.module.number + 1,
+            q=self.number + 1
+        )
         assert self.answers, 'No answer found. [{}]'.format(where)
 
         count_correct = sum(1 for ans in self.answers if ans.is_correct)
@@ -39,14 +41,13 @@ class Question:
 
 
 class Module:
-    def __init__(self, name):
+    def __init__(self, name, number, unity):
         name = ' '.join(name.split('(')[:-1]).strip()
         name = name.replace('/', ' e ')
         self.name = ' '.join([w.capitalize() for w in name.split()])
+        self.number = number
         self.questions = []
-
-    def set_questions(self, questions):
-        self.questions = [q for q in questions]
+        self.unity = unity
 
     def add_question(self, question):
         self.questions.append(question)
@@ -56,19 +57,17 @@ class Module:
 
 
 class Unity:
-    def __init__(self, name):
+    def __init__(self, name, number):
         self.name = name.upper().strip()
+        self.number = number
         self.modules = []
-
-    def set_modules(self, modules):
-        self.modules = [m for m in modules]
 
     def add_module(self, module):
         self.modules.append(module)
 
-    def check(self, unity=None):
+    def check(self):
         assert self.modules, 'No module found for UF {}'.format(self.name)
-        for i, module in enumerate(self.modules):
+        for module in self.modules:
             module.check()
             for q in module.questions:
-                q.check(unity=unity, module=i)
+                q.check()

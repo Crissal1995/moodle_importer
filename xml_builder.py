@@ -1,5 +1,7 @@
 from lxml.etree import Element, SubElement, tostring, parse, XMLSchema, CDATA
-import os
+import pathlib
+import warnings
+from os import makedirs
 
 
 def make_xml(module, fname=None):
@@ -11,10 +13,6 @@ def make_xml(module, fname=None):
     fname = fname.lower()
     if not fname.endswith('.xml'):
         fname += '.xml'
-
-    schema_fname = os.path.join(os.getcwd(), 'schema.xsd')
-    schema_doc = parse(schema_fname)
-    schema = XMLSchema(schema_doc)
 
     # root of the xml file
     root = Element('quiz')
@@ -94,15 +92,22 @@ def make_xml(module, fname=None):
             text.text = CDATA('<p>Risposta Esatta</p>' if ans.is_correct else '<p>Risposta Errata</p>')
 
     # assert xml generated is valid
-    schema.assertValid(root)
+    schema_path = pathlib.Path() / 'schema.xsd'
+    if schema_path.exists():
+        schema_tree = parse(str(schema_path))
+        schema = XMLSchema(schema_tree)
+        schema.assertValid(root)
+    else:
+        schema_warn = 'Cannot find schema.xsd in current directory, so validation cannot be made'
+        warnings.warn(schema_warn, ResourceWarning)
 
     # write to xml obj
     xml_obj = tostring(root, pretty_print=True, xml_declaration=True, encoding='UTF-8')
 
     # write to xml file
-    generated_dir = os.path.join(os.getcwd(), 'generated')
-    os.makedirs(generated_dir, exist_ok=True)
-    with open(os.path.join(generated_dir, fname), 'wb') as f:
+    generated_dir = pathlib.Path() / 'generated'
+    makedirs(generated_dir, exist_ok=True)
+    with open(generated_dir / fname, 'wb') as f:
         f.write(xml_obj)
 
     print(fname, 'written into', generated_dir)
