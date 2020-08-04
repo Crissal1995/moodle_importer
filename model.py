@@ -4,7 +4,8 @@ import html
 class Answer:
     def __init__(self, string):
         string = string.strip()
-        self.text = '-'.join(string.split('-')[1:]).strip()
+        text = '-'.join(string.split('-')[1:]).strip()
+        self.text = text.split()[0].capitalize() + ' ' + ' '.join(text.split()[1:])
 
         self.is_correct = 'ok' in string.lower().split('-')[0]
 

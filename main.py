@@ -13,6 +13,8 @@ counts = defaultdict(int)
 
 for paragraph in doc.paragraphs:
     t = paragraph.text
+    # eliminiamo caratteri unicode che danno problemi
+    t = t.replace('–', '-').replace('’', "'").replace('‘', "'")
 
     if t.lower().startswith('uf.'):
         name = ':'.join(t.split(':')[1:]).strip()
