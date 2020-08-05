@@ -54,6 +54,7 @@ class Question:
                 r=ans.text
             )
         s += 'SE ERRORE, SALTA A {}'.format(self.jump2slide)
+        s += '{}'.format(' ' + str(self.jump2slides) if len(self.jump2slides) > 1 else '')
         return s
 
 
