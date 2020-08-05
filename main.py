@@ -50,7 +50,7 @@ for paragraph in doc.paragraphs:
 
     elif test.replace('*', '').strip().startswith('slide'):
         assert question_before, 'Found jump to slide without question!'
-        slides = set([int(el) for el in re.findall(r'(\d*)', test) if el])
+        slides = set([int(el) for el in re.findall(r'(\d+)', test)])
         question_before.set_jump2slides(slides)
 
 # assert di correttezza del word parserizzato
