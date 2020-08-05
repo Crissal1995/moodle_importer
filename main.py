@@ -19,7 +19,7 @@ def populate_document(doc_pathlib):
     for paragraph in parsed_doc.paragraphs:
         text = paragraph.text
         # eliminiamo caratteri unicode che danno problemi
-        text = text.replace('–', '-').replace('’', "'").replace('‘', "'")
+        text = text.replace('–', '-').replace('’', "'").replace('‘', "'").replace('“', '"').replace('”', '"')
         test = text.lower()
 
         if test.startswith('uf.'):
@@ -79,5 +79,5 @@ for file in files:
     print('start work on', file)
     doc = populate_document(file)
     doc.check()
-    # print(doc)
+    print(doc)
     generate_xmls_per_module(doc)

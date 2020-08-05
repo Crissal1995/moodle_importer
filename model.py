@@ -1,4 +1,9 @@
 import html
+import textwrap
+
+
+def indent(text, amount, ch=' '):
+    return textwrap.indent(text, amount * ch)
 
 
 class Answer:
@@ -17,6 +22,9 @@ class Answer:
             self.html_escaped = to_add + self.html_escaped
             self.html = to_add + self.html
 
+    def __str__(self):
+        return 'RISPOSTA{e}: {r}'.format(e=' ESATTA' if self.is_correct else '', r=self.text)
+
 
 class Question:
     def __init__(self, name, number, module):
@@ -30,6 +38,9 @@ class Question:
     def set_jump2slides(self, j2s):
         self.jump2slides = j2s
         self.jump2slide = min(j2s)
+        # now that I have values, I can sort module's questions
+        # more sorting, but it works
+        self.module.questions_sorted.sort(key=lambda q: q.jump2slide)
 
     def add_answer(self, answer):
         self.answers.append(answer)
@@ -50,14 +61,11 @@ class Question:
 
     def __str__(self):
         s = 'DOMANDA {n}: {text}\n'.format(n=self.number + 1, text=self.name)
-        for ans in self.answers:
-            s += 'RISPOSTA{e}: {r}\n'.format(
-                e=' ESATTA' if ans.is_correct else '',
-                r=ans.text
-            )
-        s += 'SE ERRORE, SALTA A {}'.format(self.jump2slide)
+        s += '\n'.join([str(ans) for ans in self.answers])
+        s += '\nSE ERRORE, SALTA A {}'.format(self.jump2slide)
+        # stampa tutte le slides a cui saltare, se sono più di una
         s += '{}'.format(' ' + str(self.jump2slides) if len(self.jump2slides) > 1 else '')
-        return s
+        return indent(s, 6)
 
 
 class Module:
@@ -67,10 +75,13 @@ class Module:
         self.name = ' '.join([w.capitalize() for w in name.split()])
         self.number = number
         self.questions = []
+        self.questions_sorted = []
         self.unity = unity
 
     def add_question(self, question):
         self.questions.append(question)
+        self.questions_sorted.append(question)
+        # self.questions_sorted.sort(key=lambda q: q.jump2slide)
 
     def check(self):
         assert self.questions, 'No question found for module {}'.format(self.name)
@@ -80,9 +91,10 @@ class Module:
 
     def __str__(self):
         s = 'MODULO {n}: {t}\n'.format(n=self.number + 1, t=self.name)
-        s += 'DOMANDE:\n'
-        s += '\n'.join([str(q) for q in self.questions])
-        return s
+        s += 'DOMANDE (NUMERO): {}\n'.format(len(self.questions))
+        # cambiando l'array, cambia l'ordine della stampa delle domande
+        s += '\n\n'.join([str(q) for q in self.questions_sorted])
+        return indent(s, 3)
 
 
 class Unity:
@@ -101,9 +113,9 @@ class Unity:
             module.check()
 
     def __str__(self):
-        s = 'UNITà FUNZIONALE'.upper() + ' {}: {}\n'.format(self.number, self.name)
-        s += 'MODULI:\n'
-        s += '\n'.join([str(m) for m in self.modules])
+        s = 'UNITà FUNZIONALE {}: {}\n'.upper().format(self.number + 1, self.name)
+        s += 'MODULI (NUMERO): {}\n'.format(len(self.modules))
+        s += '\n\n'.join([str(m) for m in self.modules])
         return s
 
 
@@ -123,6 +135,6 @@ class Document:
 
     def __str__(self):
         s = 'DOCUMENTO {}\n'.format(self.name)
-        s += 'UNITà FUNZIONALI:\n'.upper()
-        s += '\n'.join([str(uf) for uf in self.unities])
+        s += 'UNITà FUNZIONALI (NUMERO): {}\n'.upper().format(len(self.unities))
+        s += '\n\n'.join([str(uf) for uf in self.unities])
         return s
