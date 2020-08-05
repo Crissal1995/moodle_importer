@@ -46,6 +46,8 @@ class Question:
         assert count_correct > 0, 'No correct answer found. [{}]'.format(where)
         assert count_correct == 1, 'More than one correct answer found. [{}]'.format(where)
 
+        assert self.jump2slide, 'No slide to jump in case of error. [{}]'.format(where)
+
     def __str__(self):
         s = 'DOMANDA {n}: {text}\n'.format(n=self.number + 1, text=self.name)
         for ans in self.answers:
@@ -73,6 +75,15 @@ class Module:
     def check(self):
         assert self.questions, 'No question found for module {}'.format(self.name)
 
+        for question in self.questions:
+            question.check()
+
+    def __str__(self):
+        s = 'MODULO {n}: {t}\n'.format(n=self.number + 1, t=self.name)
+        s += 'DOMANDE:\n'
+        s += '\n'.join([str(q) for q in self.questions])
+        return s
+
 
 class Unity:
     def __init__(self, name, number):
@@ -85,7 +96,33 @@ class Unity:
 
     def check(self):
         assert self.modules, 'No module found for UF {}'.format(self.name)
+
         for module in self.modules:
             module.check()
-            for q in module.questions:
-                q.check()
+
+    def __str__(self):
+        s = 'UNITà FUNZIONALE'.upper() + ' {}: {}\n'.format(self.number, self.name)
+        s += 'MODULI:\n'
+        s += '\n'.join([str(m) for m in self.modules])
+        return s
+
+
+class Document:
+    def __init__(self, name):
+        self.name = name
+        self.unities = []
+
+    def add_unity(self, unity):
+        self.unities.append(unity)
+
+    def check(self):
+        assert self.unities, 'No functional unity found for document {}'.format(self.name)
+
+        for unity in self.unities:
+            unity.check()
+
+    def __str__(self):
+        s = 'DOCUMENTO {}\n'.format(self.name)
+        s += 'UNITà FUNZIONALI:\n'.upper()
+        s += '\n'.join([str(uf) for uf in self.unities])
+        return s
