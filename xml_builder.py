@@ -4,12 +4,15 @@ import warnings
 from os import makedirs
 
 
-def make_xml(module, fname=None):
-    if fname is None:
-        fname = module.name.lower().replace('/', '').replace(',', ' ').replace(':', ' ').replace('.', ' ')
-        fname = '_'.join(fname.split())
-        fname = 'domande_generate_{}'.format(fname)
+def generate_xmls_per_module(doc, print_=True):
+    for unity in doc.unities:
+        for module in unity.modules:
+            i, j = unity.number, module.number
+            name = 'uf_{}_module_{}'.format(i+1, j+1)
+            make_xml(module, name, doc.name, print_)
 
+
+def make_xml(module, fname, docname, print_):
     fname = fname.lower()
     if not fname.endswith('.xml'):
         fname += '.xml'
@@ -105,9 +108,10 @@ def make_xml(module, fname=None):
     xml_obj = tostring(root, pretty_print=True, xml_declaration=True, encoding='UTF-8')
 
     # write to xml file
-    generated_dir = pathlib.Path() / 'generated'
+    generated_dir = pathlib.Path() / 'generated' / docname
     makedirs(generated_dir, exist_ok=True)
     with open(generated_dir / fname, 'wb') as f:
         f.write(xml_obj)
 
-    print(fname, 'written into', generated_dir)
+    if print_:
+        print(fname, 'written into', generated_dir)
