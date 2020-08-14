@@ -57,8 +57,11 @@ class Question:
 
     def __str__(self):
         s = 'DOMANDA {n} [{gn}]: {t}\n'.format(n=self.number + 1, gn=self.global_number + 1, t=self.name)
-        s += '\n'.join([str(ans) for ans in self.answers])
-        s += '\nHTML CORRETTA: {}'.format([a for a in self.answers if a.is_correct][0].html)
+        answers = self.answers.copy()
+        # l'unica corretta va in prima posizione
+        answers.sort(key=lambda ans: not ans.is_correct)
+        s += '\n'.join([str(ans) for ans in answers])
+        s += '\nHTML CORRETTA: {}'.format(answers[0].html)
         s += '\nSE ERRORE, SALTA A {}'.format(self.jump2slide)
         # stampa tutte le slides a cui saltare, se sono più di una
         s += '{}'.format(' ' + str(self.jump2slides) if len(self.jump2slides) > 1 else '')
