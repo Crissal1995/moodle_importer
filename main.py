@@ -14,10 +14,10 @@ def populate_document(doc_pathlib):
     try:
         parsed_doc = docx.Document(str(doc_pathlib))
     except Exception as e:
-        raise ValueError(str(e) + '. Documento Word non valido?')
+        raise ValueError(str(e) + '.\nDocumento Word non valido oppure aperto e non salvato!')
 
-    uf_re = re.compile(r'(uf)[^a-zA-Z]*(.+)', re.IGNORECASE)
-    module_re = re.compile(r'(modulo)[^a-zA-Z]*(.+)', re.IGNORECASE)
+    uf_re = re.compile(r'(uf)[^a-z]*([\w :\']+)[(]?(\d+)?', re.IGNORECASE)
+    module_re = re.compile(r'(modulo)[^a-z]*([\w :\']+)[(]?(\d+)?', re.IGNORECASE)
     question_re = re.compile(r'(domanda)[^a-zA-Z]*(.+)', re.IGNORECASE)
     answer_re = re.compile(r'(RISPOSTA\s?[A-Z]?)[^a-zA-Z]*(ok(?=\s+|\-+))?[^\w]*(.*)')
 
@@ -25,11 +25,13 @@ def populate_document(doc_pathlib):
         text = paragraph.text
         # eliminiamo caratteri unicode che danno problemi
         text = text.replace('–', '-').replace('’', "'").replace('‘', "'").replace('“', '"').replace('”', '"')
+        text = re.sub(r'\s+', ' ', text)  # sostituiamo più spazi con uno solo
         test = text.lower()
 
         if test.startswith('uf'):
-            name = uf_re.search(text).group(2)
-            uf = model.Unity(name, counts['uf'])
+            groups = uf_re.search(text).groups()
+            name, duration = groups[1:3]
+            uf = model.Unity(counts['uf'], name, duration)
             model_doc.add_unity(uf)
 
             uf_before = uf
@@ -42,8 +44,9 @@ def populate_document(doc_pathlib):
         elif test.startswith('modulo'):
             assert uf_before, 'Found module without unity!'
 
-            name = module_re.search(text).group(2)
-            module = model.Module(name, counts['module'], unity=uf_before)
+            groups = module_re.search(text).groups()
+            name, duration = groups[1:3]
+            module = model.Module(counts['module'], name, duration, unity=uf_before)
             uf_before.add_module(module)
 
             module_before = module
@@ -56,12 +59,13 @@ def populate_document(doc_pathlib):
             assert module_before, 'Found question without module!'
 
             name = question_re.search(text).group(2)
-            question = model.Question(name, counts['question'], module=module_before)
+            question = model.Question(counts['question'], counts['global_question'], name, module=module_before)
             module_before.add_question(question)
 
             question_before = question
 
             counts['question'] += 1
+            counts['global_question'] += 1
 
         elif test.startswith('risposta'):
             assert question_before, 'Found answer without question!'
@@ -88,12 +92,13 @@ def populate_document(doc_pathlib):
 
 # begin main
 q_dir = pathlib.Path('questions_dir')
-files = list(q_dir.rglob('*.docx')) + list(q_dir.rglob('*.doc'))
+files = list(q_dir.glob('*.docx')) + list(q_dir.glob('*.doc'))
 
 for file in files:
-    print('start work on', file)
+    print('Start to work on', file)
     doc = populate_document(file)
     doc.check()
     # print(doc)
-    doc.print_questions(ordered=True, separated=True)
+    doc.print_questions(ordered=True, separated=True, filepath=file.stem)
     generate_xmls_per_module(doc)
+    print('----------\n')
