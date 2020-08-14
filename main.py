@@ -16,10 +16,10 @@ def populate_document(doc_pathlib):
     except Exception as e:
         raise ValueError(str(e) + '. Documento Word non valido?')
 
-    uf_re = re.compile(r'(uf)([^a-zA-Z]*)([\w+\s*:]*)', re.IGNORECASE)
-    module_re = re.compile(r'(modulo)([^a-zA-Z]*)([\w+\s*:]*)', re.IGNORECASE)
-    question_re = re.compile(r'(domanda)([^a-zA-Z]*)([\w+\s*:]*)', re.IGNORECASE)
-    answer_re = re.compile(r'(risposta\s?[A-Z]?)[^\w]*(ok)?\s*([\w+\s*:\']+)', re.IGNORECASE)
+    uf_re = re.compile(r'(uf)[^a-zA-Z]*(.+)', re.IGNORECASE)
+    module_re = re.compile(r'(modulo)[^a-zA-Z]*(.+)', re.IGNORECASE)
+    question_re = re.compile(r'(domanda)[^a-zA-Z]*(.+)', re.IGNORECASE)
+    answer_re = re.compile(r'(RISPOSTA\s?[A-Z]?)[^a-zA-Z]*(ok(?=\s+|\-+))?[^\w]*(.*)')
 
     for paragraph in parsed_doc.paragraphs:
         text = paragraph.text
@@ -78,6 +78,11 @@ def populate_document(doc_pathlib):
             slides = set([int(el) for el in re.findall(r'(\d+)', test)])
             question_before.set_jump2slides(slides)
 
+    # sort questions based on jump2slide
+    for uf in model_doc.unities:
+        for module in uf.modules:
+            module.sort_questions()
+
     return model_doc
 
 
@@ -89,5 +94,6 @@ for file in files:
     print('start work on', file)
     doc = populate_document(file)
     doc.check()
-    print(doc)
+    # print(doc)
+    doc.print_questions(ordered=True, separated=True)
     generate_xmls_per_module(doc)
