@@ -16,14 +16,19 @@ def populate_document(doc_pathlib):
     except Exception as e:
         raise ValueError(str(e) + '. Documento Word non valido?')
 
+    uf_re = re.compile(r'(uf)([^a-zA-Z]*)([\w+\s*:]*)', re.IGNORECASE)
+    module_re = re.compile(r'(modulo)([^a-zA-Z]*)([\w+\s*:]*)', re.IGNORECASE)
+    question_re = re.compile(r'(domanda)([^a-zA-Z]*)([\w+\s*:]*)', re.IGNORECASE)
+    answer_re = re.compile(r'(risposta\s?[A-Z]?)[^\w]*(ok)?\s*([\w+\s*:\']+)', re.IGNORECASE)
+
     for paragraph in parsed_doc.paragraphs:
         text = paragraph.text
         # eliminiamo caratteri unicode che danno problemi
         text = text.replace('–', '-').replace('’', "'").replace('‘', "'").replace('“', '"').replace('”', '"')
         test = text.lower()
 
-        if test.startswith('uf.'):
-            name = ':'.join(text.split(':')[1:]).strip()
+        if test.startswith('uf'):
+            name = uf_re.search(text).group(2)
             uf = model.Unity(name, counts['uf'])
             model_doc.add_unity(uf)
 
@@ -34,10 +39,10 @@ def populate_document(doc_pathlib):
             for kw in ('module', 'question'):
                 counts[kw] = 0
 
-        elif test.startswith('modulo '):
+        elif test.startswith('modulo'):
             assert uf_before, 'Found module without unity!'
 
-            name = text.split('-')[1].strip()
+            name = module_re.search(text).group(2)
             module = model.Module(name, counts['module'], unity=uf_before)
             uf_before.add_module(module)
 
@@ -47,10 +52,10 @@ def populate_document(doc_pathlib):
             counts['module'] += 1
             counts['question'] = 0
 
-        elif test.startswith('domanda:'):
+        elif test.startswith('domanda'):
             assert module_before, 'Found question without module!'
 
-            name = ':'.join(text.split(':')[1:])
+            name = question_re.search(text).group(2)
             question = model.Question(name, counts['question'], module=module_before)
             module_before.add_question(question)
 
@@ -60,7 +65,12 @@ def populate_document(doc_pathlib):
 
         elif test.startswith('risposta'):
             assert question_before, 'Found answer without question!'
-            answer = model.Answer(text)
+
+            groups = answer_re.search(text).groups()
+            is_correct, name = groups[1:3]
+            is_correct = True if is_correct else False  # fix None
+
+            answer = model.Answer(name, is_correct)
             question_before.add_answer(answer)
 
         elif test.replace('*', '').strip().startswith('slide'):

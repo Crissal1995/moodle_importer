@@ -7,12 +7,9 @@ def indent(text, amount, ch=' '):
 
 
 class Answer:
-    def __init__(self, string):
-        string = string.strip()
-        text = '-'.join(string.split('-')[1:]).strip()
-        self.text = text.split()[0].capitalize() + ' ' + ' '.join(text.split()[1:])
-
-        self.is_correct = 'ok' in string.lower().split('-')[0]
+    def __init__(self, name, is_correct):
+        self.text = name.strip()
+        self.is_correct = is_correct
 
         self.html_escaped = '<p>{}</p>'.format(html.escape(self.text, False))
         self.html = '<p>{}</p>'.format(self.text)
