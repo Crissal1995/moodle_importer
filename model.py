@@ -1,13 +1,19 @@
 import html
 import textwrap
 import pathlib
+from abc import ABC
 
 
 def indent(text, amount, ch=' '):
     return textwrap.indent(text, amount * ch)
 
 
-class Answer:
+class Base(ABC):
+    def check(self):
+        raise NotImplementedError
+
+
+class Answer(Base):
     def __init__(self, name, is_correct):
         self.text = name.strip()
         self.is_correct = is_correct
@@ -20,11 +26,14 @@ class Answer:
             self.html_escaped = to_add + self.html_escaped
             self.html = to_add + self.html
 
+    def check(self):
+        assert self.text, 'Found empty text for answer!'
+
     def __str__(self):
         return 'RISPOSTA{e}: {r}'.format(e=' ESATTA' if self.is_correct else '', r=self.text)
 
 
-class Question:
+class Question(Base):
     def __init__(self, number, global_number, name, module):
         self.name = name.strip()
         self.number = number
@@ -56,6 +65,12 @@ class Question:
 
         assert self.jump2slide, 'No slide to jump in case of error. [{}]'.format(where)
 
+        for ans in self.answers:
+            try:
+                ans.check()
+            except AssertionError as e:
+                raise AssertionError(str(e) + ' [{}]'.format(where))
+
     def __str__(self):
         return self.str()
 
@@ -77,7 +92,7 @@ class Question:
         return indent(s, indent_amount)
 
 
-class Module:
+class Module(Base):
     def __init__(self, number, name, duration, unity):
         self.name = name.replace('/', ' e ').strip()
         self.number = number
@@ -127,7 +142,7 @@ class Module:
         return indent(s, indent_amount)
 
 
-class Unity:
+class Unity(Base):
     def __init__(self, number, name, duration):
         self.name = name.upper().strip()
         self.number = number
@@ -157,7 +172,7 @@ class Unity:
         return indent(s, indent_amount)
 
 
-class Document:
+class Document(Base):
     def __init__(self, name):
         self.name = name
         self.unities = []
