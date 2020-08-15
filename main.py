@@ -99,6 +99,6 @@ for file in files:
     doc = populate_document(file)
     doc.check()
     # print(doc)
-    doc.print_questions(ordered=True, separated=True, filepath=file.stem)
+    doc.print_questions(filepath=file.stem, ordered=True, separated=True)
     generate_xmls_per_module(doc)
     print('----------\n')

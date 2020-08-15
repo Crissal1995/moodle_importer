@@ -1,5 +1,6 @@
 import html
 import textwrap
+import pathlib
 
 
 def indent(text, amount, ch=' '):
@@ -15,7 +16,7 @@ class Answer:
         self.html = '<p>{}</p>'.format(self.text)
 
         if self.is_correct:
-            to_add = '<input type="hidden" id="Corretta">\n'
+            to_add = '<input type="hidden" id="Corretta">'
             self.html_escaped = to_add + self.html_escaped
             self.html = to_add + self.html
 
@@ -56,16 +57,24 @@ class Question:
         assert self.jump2slide, 'No slide to jump in case of error. [{}]'.format(where)
 
     def __str__(self):
+        return self.str()
+
+    def str(self, **kwargs):
+        ordered = kwargs.get('ordered', True)
+        indent_amount = kwargs.get('indent', 4)
+        assert indent_amount >= 0
+
+        answers = sorted(self.answers, key=lambda ans: not ans.is_correct) if ordered else self.answers
+        correct_answer = [ans for ans in answers if ans.is_correct][0]
+
         s = 'DOMANDA {n} [{gn}]: {t}\n'.format(n=self.number + 1, gn=self.global_number + 1, t=self.name)
-        answers = self.answers.copy()
-        # l'unica corretta va in prima posizione
-        answers.sort(key=lambda ans: not ans.is_correct)
         s += '\n'.join([str(ans) for ans in answers])
-        s += '\nHTML CORRETTA: {}'.format(answers[0].html)
+        s += '\nHTML CORRETTA: {}'.format(correct_answer.html)
         s += '\nSE ERRORE, SALTA A {}'.format(self.jump2slide)
         # stampa tutte le slides a cui saltare, se sono più di una
         s += '{}'.format(' ' + str(self.jump2slides) if len(self.jump2slides) > 1 else '')
-        return indent(s, 6)
+
+        return indent(s, indent_amount)
 
 
 class Module:
@@ -93,28 +102,29 @@ class Module:
             question.check()
 
     def __str__(self):
-        return self._str(ordered=False, separated=False)
+        return self.str(ordered=False, separated=False)
 
-    def _str(self, *args, **kwargs):
-        ordered = kwargs['ordered']
-        separated = kwargs['separated']
+    def str(self, **kwargs):
+        ordered = kwargs.get('ordered', True)
+        separated = kwargs.get('separated', False)
+        indent_amount = kwargs.get('indent', 4)
+        assert indent_amount >= 0
+
         s = 'MODULO {n}: {t} - Durata {h} Ore\n'.format(n=self.number + 1, t=self.name, h=self.duration)
         s += 'DOMANDE (NUMERO): {}\n'.format(len(self.questions))
         # cambiando l'array, cambia l'ordine della stampa delle domande
         qs = self.questions_sorted if ordered else self.questions
         to_print = [str(q) for q in qs]
         if separated:
-            try:
-                to_divide = min([x for x in range(4, 7) if len(to_print) % x == 0])
-            except ValueError:  # min() over empty sequence
-                to_divide = 5  # valore di default
+            candidates = [x for x in range(4, 7) if len(to_print) % x == 0] or [5]  # valore di default
+            to_divide = min(candidates)
 
             for i, _ in enumerate(to_print):
                 if i % (to_divide + 1) == 0:
                     to_print.insert(i, ''.center(50, '-'))
 
         s += '\n\n'.join(to_print)
-        return indent(s, 3)
+        return indent(s, indent_amount)
 
 
 class Unity:
@@ -134,13 +144,17 @@ class Unity:
             module.check()
 
     def __str__(self):
-        return self._str()
+        return self.str()
 
-    def _str(self, *args, **kwargs):
+    def str(self, **kwargs):
+        indent_amount = kwargs.get('indent', 0)
+        assert indent_amount >= 0
+
         s = 'UNITà FUNZIONALE {}: {} - Durata {} Ore\n'.upper().format(self.number + 1, self.name, self.duration)
         s += 'MODULI (NUMERO): {}\n'.format(len(self.modules))
-        s += '\n\n'.join([m._str(*args, **kwargs) for m in self.modules])
-        return s
+        s += '\n\n'.join([m.str(**kwargs) for m in self.modules])
+
+        return indent(s, indent_amount)
 
 
 class Document:
@@ -158,22 +172,31 @@ class Document:
             unity.check()
 
     def __str__(self):
+        return self.str()
+
+    def str(self, **kwargs):
         s = 'DOCUMENTO {}\n'.format(self.name)
         s += 'UNITà FUNZIONALI (NUMERO): {}\n'.upper().format(len(self.unities))
-        s += '\n\n'.join([str(uf) for uf in self.unities])
+        s += '\n\n'.join([uf.str(**kwargs) for uf in self.unities])
         return s
 
-    def print_questions(self, ordered=False, separated=False, filepath=None):
-        s = 'DOCUMENTO {}\n'.format(self.name)
-        s += 'UNITà FUNZIONALI (NUMERO): {}\n'.upper().format(len(self.unities))
-        s += '\n\n'.join([uf._str(ordered=ordered, separated=separated) for uf in self.unities])
+    def print_questions(self, filepath=None, **kwargs):
+        ordered = kwargs.get('ordered', True)
+        separated = kwargs.get('separated', True)
+
+        s = self.str(ordered=ordered, separated=separated)
+
         if not filepath:
             print(s)
         else:
             if isinstance(filepath, str) and not filepath.endswith('.txt'):
                 filepath += '.txt'
+                filepath = 'generated/' + filepath
+            elif isinstance(filepath, pathlib.Path):
+                filepath = filepath.with_suffix('.txt').name
+                filepath = pathlib.Path('generated') / filepath
 
-            with open('generated/' + filepath, 'wt', encoding='utf-8') as f:
+            with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(s)
             print('Questions written on', filepath)
         return s
