@@ -19,7 +19,7 @@ def populate_document(doc_pathlib):
     uf_re = re.compile(r'(uf)[^a-z]*([\w :\']+)[(]?(\d+)?', re.IGNORECASE)
     module_re = re.compile(r'(modulo)[^a-z]*([\w :\']+)[(]?(\d+)?', re.IGNORECASE)
     question_re = re.compile(r'(domanda)[^a-zA-Z]*(.+)', re.IGNORECASE)
-    answer_re = re.compile(r'(RISPOSTA\s?[A-Z]?)[^a-zA-Z]*(ok(?=\s+|-+))?[^\w]*(.*)')
+    answer_re = re.compile(r'(RISPOSTA\s?[A-Z]?)[^\w]*(ok(?=\s+|-+))?[^\w]*(.*)')
 
     for paragraph in parsed_doc.paragraphs:
         text = paragraph.text
@@ -99,6 +99,7 @@ for file in files:
     doc = populate_document(file)
     doc.check()
     # print(doc)
-    doc.print_questions(filepath=file.stem, ordered=True, separated=True)
+    filepath = None or file.stem
+    doc.print_questions(filepath=filepath, ordered=True, separated=True)
     generate_xmls_per_module(doc)
     print('----------\n')
