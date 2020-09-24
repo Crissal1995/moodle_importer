@@ -2,6 +2,7 @@ from collections import defaultdict
 import pathlib
 import docx
 import re
+import argparse
 
 from xml_builder import generate_xmls_per_module
 import model
@@ -91,15 +92,22 @@ def populate_document(doc_pathlib):
 
 
 # begin main
-q_dir = pathlib.Path('questions_dir')
-files = list(q_dir.glob('*.docx')) + list(q_dir.glob('*.doc'))
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('folder', type=str, help='The folder of Word documents to parse')
+    parser.add_argument('-o', '--ordered', default=False, action='store_true', help='Display questions ordered by (min) slide to jump in case of error')
+    parser.add_argument('-s', '--separated', default=False, action='store_true', help='Separate questions in group of 4+ elements')
+    parser.add_argument('-d', '--dump', default=False, action='store_true', help='Dump each question parsed to textfile with same name of document instead of stdout')
+    args = parser.parse_args()
 
-for file in files:
-    print('Start to work on', file)
-    doc = populate_document(file)
-    doc.check()
-    # print(doc)
-    filepath = None or file.stem
-    doc.print_questions(filepath=filepath, ordered=True, separated=True)
-    generate_xmls_per_module(doc)
-    print('----------\n')
+    q_dir = pathlib.Path(args.folder)
+    files = list(q_dir.glob('*.docx')) + list(q_dir.glob('*.doc'))
+
+    for file in files:
+        print('Start to work on', file)
+        doc = populate_document(file)
+        doc.check()
+        filepath = file.stem if args.dump else None
+        generate_xmls_per_module(doc)  # create safely folder 'generated'
+        doc.print_questions(filepath=filepath, ordered=args.ordered, separated=args.separated)
+        print('----------\n')
