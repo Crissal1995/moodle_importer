@@ -95,9 +95,9 @@ def populate_document(doc_pathlib):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', type=str, help='The folder of Word documents to parse')
-    parser.add_argument('-o', '--ordered', default=False, action='store_true', help='Display questions ordered by (min) slide to jump in case of error')
-    parser.add_argument('-s', '--separated', default=False, action='store_true', help='Separate questions in group of 4+ elements')
-    parser.add_argument('-d', '--dump', default=False, action='store_true', help='Dump each question parsed to textfile with same name of document instead of stdout')
+    parser.add_argument('-no', '--no-ordered', default=False, action='store_true', help='Don\'t display questions ordered by (min) slide to jump')
+    parser.add_argument('-ns', '--no-separated', default=False, action='store_true', help='Don\'t separate questions in groups')
+    parser.add_argument('-nd', '--no-dump', default=False, action='store_true', help='Dump each question parsed to stdout instead of a textfile with same name of document')
     args = parser.parse_args()
 
     q_dir = pathlib.Path(args.folder)
@@ -107,7 +107,7 @@ if __name__ == '__main__':
         print('Start to work on', file)
         doc = populate_document(file)
         doc.check()
-        filepath = file.stem if args.dump else None
+        filepath = None if args.no_dump else file.stem
         generate_xmls_per_module(doc)  # create safely folder 'generated'
-        doc.print_questions(filepath=filepath, ordered=args.ordered, separated=args.separated)
+        doc.print_questions(filepath=filepath, ordered=not args.no_ordered, separated=not args.no_separated)
         print('----------\n')
