@@ -2,6 +2,11 @@ import html
 import textwrap
 import pathlib
 from abc import ABC
+try:
+    from sklearn.cluster import AgglomerativeClustering as Clustering
+    import numpy as np
+except ImportError:
+    Clustering = None
 
 
 def indent(text, amount, ch=' '):
@@ -132,12 +137,28 @@ class Module(Base):
         qs = self.questions_sorted if ordered else self.questions
         to_print = [str(q) for q in qs]
         if separated:
-            candidates = [x for x in range(4, 7) if len(to_print) % x == 0] or [5]  # valore di default
-            to_divide = min(candidates)
+            if Clustering:
+                X = np.array([q.jump2slide for q in qs]).reshape(-1, 1)
+                # media di clusters di 5 o 6 elementi
+                n = int(len(qs) / 5)
+                labels = Clustering(n, linkage='complete').fit_predict(X)
+                old_label = None
+                cnt = 0
+                for i, label in enumerate(labels):
+                    if old_label is None:
+                        old_label = label
+                        continue
+                    elif label != old_label:
+                        to_print.insert(i + cnt, ''.center(50, '-'))
+                        cnt += 1
+                    old_label = label
+            else:
+                candidates = [x for x in range(4, 7) if len(to_print) % x == 0] or [5]  # valore di default
+                to_divide = min(candidates)
 
-            for i, _ in enumerate(to_print):
-                if i % (to_divide + 1) == 0:
-                    to_print.insert(i, ''.center(50, '-'))
+                for i, _ in enumerate(to_print):
+                    if i % (to_divide + 1) == 0:
+                        to_print.insert(i, ''.center(50, '-'))
 
         s += '\n\n'.join(to_print)
         return indent(s, indent_amount)
