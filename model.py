@@ -58,6 +58,7 @@ class Question(Base):
             gq=self.global_number + 1
         )
         assert self.answers, 'No answer found. [{}]'.format(where)
+        assert len(self.answers) == 3, 'More than 3 answers found (maybe missing "DOMANDA:"?). [{}]'.format(where)
 
         count_correct = sum(1 for ans in self.answers if ans.is_correct)
         assert count_correct > 0, 'No correct answer found. [{}]'.format(where)
