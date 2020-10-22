@@ -17,8 +17,8 @@ def populate_document(doc_pathlib):
     except Exception as e:
         raise ValueError(str(e) + '.\nDocumento Word non valido oppure aperto e non salvato!')
 
-    uf_re = re.compile(r'(uf)[^a-z]*([\w :\']+)[(]?(\d+)?', re.IGNORECASE)
-    module_re = re.compile(r'(modulo)[^a-z]*([\w :\']+)[(]?(\d+)?', re.IGNORECASE)
+    uf_re = re.compile(r'(uf)[^a-z]*([^(]+)[(]?(\d+)?', re.IGNORECASE)
+    module_re = re.compile(r'(modulo)[^a-z]*([^(]+)[(]?(\d+)?', re.IGNORECASE)
     question_re = re.compile(r'(domanda)[^a-zA-Z]*(.+)', re.IGNORECASE)
     answer_re = re.compile(r'(RISPOSTA\s?[A-Z]?)[^\w]*(ok(?=\s+|-+))?[^\w]*(.*)')
 

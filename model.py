@@ -2,6 +2,7 @@ import html
 import textwrap
 import pathlib
 from abc import ABC
+import re
 try:
     from sklearn.cluster import AgglomerativeClustering as Clustering
     import numpy as np
@@ -100,7 +101,7 @@ class Question(Base):
 
 class Module(Base):
     def __init__(self, number, name, duration, unity):
-        self.name = name.replace('/', ' e ').strip()
+        self.name = re.sub(r'\s+', ' ', name.replace('/', ' e ').strip())
         self.number = number
         self.duration = duration
         self.questions = []
