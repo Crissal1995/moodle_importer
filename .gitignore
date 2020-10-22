@@ -126,4 +126,5 @@ dmypy.json
 # pycharm
 .idea/
 
-generated/
+generated/*
+questions_dir/*
