@@ -23,13 +23,13 @@ def populate_document(doc_pathlib):
     answer_re = re.compile(r'(RISPOSTA\s?[A-Z]?)[^\w]*(ok(?=\s+|-+))?[^\w]*(.*)')
 
     for paragraph in parsed_doc.paragraphs:
-        text = paragraph.text
+        text = paragraph.text.strip()
         # eliminiamo caratteri unicode che danno problemi
         text = text.replace('–', '-').replace('’', "'").replace('‘', "'").replace('“', '"').replace('”', '"')
         for char, repl in zip('aeiouAEIOU', 'àèìòùÀÈÌÒÙ'):  # fix lettere accentate
             text = text.replace("{}'".format(char), repl)
         text = re.sub(r'\s+', ' ', text)  # sostituiamo più spazi con uno solo
-        test = text.lower()
+        test = text.lower().strip()
 
         if test.startswith('uf'):
             groups = uf_re.search(text).groups()
