@@ -128,3 +128,5 @@ dmypy.json
 
 generated/*
 questions_dir/*
+
+*.docx
