@@ -26,6 +26,8 @@ def populate_document(doc_pathlib):
         text = paragraph.text
         # eliminiamo caratteri unicode che danno problemi
         text = text.replace('–', '-').replace('’', "'").replace('‘', "'").replace('“', '"').replace('”', '"')
+        for char, repl in zip('aeiouAEIOU', 'àèìòùÀÈÌÒÙ'):  # fix lettere accentate
+            text = text.replace("{}'".format(char), repl)
         text = re.sub(r'\s+', ' ', text)  # sostituiamo più spazi con uno solo
         test = text.lower()
 
