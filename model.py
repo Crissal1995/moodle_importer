@@ -141,7 +141,9 @@ class Module(Base):
             if Clustering:
                 X = np.array([q.jump2slide for q in qs]).reshape(-1, 1)
                 # media di clusters di 5 o 6 elementi
-                n = int(len(qs) / 5)
+                n = len(qs) // 5
+                if n < 1:
+                    n = 1
                 labels = Clustering(n, linkage='complete').fit_predict(X)
                 old_label = None
                 cnt = 0
