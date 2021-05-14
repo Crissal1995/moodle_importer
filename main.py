@@ -106,6 +106,11 @@ def populate_document(doc_pathlib):
         for module in uf.modules:
             module.sort_questions()
 
+    # generate clusters
+    for uf in model_doc.unities:
+        for module in uf.modules:
+            module.write_cluster()
+
     return model_doc
 
 
