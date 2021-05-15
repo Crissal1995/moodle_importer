@@ -102,13 +102,10 @@ def populate_document(doc_pathlib):
         """
 
     # sort questions based on jump2slide
+    # and also save clusters to json file
     for uf in model_doc.unities:
         for module in uf.modules:
             module.sort_questions()
-
-    # generate clusters
-    for uf in model_doc.unities:
-        for module in uf.modules:
             module.write_cluster()
 
     return model_doc
