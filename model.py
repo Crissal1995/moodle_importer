@@ -1,13 +1,14 @@
 import html
+import os
+from typing import Union, Sequence
+from collections import defaultdict
 import textwrap
 import pathlib
 from abc import ABC
 import re
-try:
-    from sklearn.cluster import AgglomerativeClustering as Clustering
-    import numpy as np
-except ImportError:
-    Clustering = None
+from sklearn.cluster import AgglomerativeClustering as Clustering
+import numpy as np
+import json
 
 
 def indent(text, amount, ch=' '):
@@ -38,6 +39,17 @@ class Answer(Base):
     def __str__(self):
         return 'RISPOSTA{e}: {r}'.format(e=' ESATTA' if self.is_correct else '', r=self.text)
 
+    @property
+    def htmlstr(self):
+        return self.html
+
+    def todict(self):
+        return dict(
+            is_correct=bool(self.is_correct),
+            text=self.text,
+            html=self.html,
+        )
+
 
 class Question(Base):
     def __init__(self, number, global_number, name, module):
@@ -55,6 +67,8 @@ class Question(Base):
 
     def add_answer(self, answer):
         self.answers.append(answer)
+
+        self.answers.sort(key=lambda ans: not ans.is_correct)
 
     def check(self):
         where = 'uf: {u}, module: {m}, question: {q} / global question: {gq}'.format(
@@ -98,6 +112,73 @@ class Question(Base):
 
         return indent(s, indent_amount)
 
+    def todict(self):
+        return dict(
+            name=self.name,
+            number=self.number + 1,
+            global_number=self.global_number + 1,
+            jump2slide=self.jump2slide,
+            answers=[answer.todict() for answer in self.answers]
+        )
+
+
+class QuestionCluster(Base):
+    """Cluster of Questions"""
+
+    questions = []
+    min_jump2slide = None
+    max_jump2slide = None
+    min_slide = None
+
+    def __init__(self, tag: int):
+        self.tag = tag
+
+    def add_question(self, question: Question):
+        """Add a question to the cluster"""
+        self.questions.append(question)
+
+        # set minimum j2s of cluster
+        if not self.min_jump2slide:
+            self.min_jump2slide = question.jump2slide
+        else:
+            self.min_jump2slide = min([question.jump2slide for question in self.questions])
+
+        # set minimum j2s of cluster
+        if not self.max_jump2slide:
+            self.max_jump2slide = max(question.jump2slides)
+        else:
+            self.max_jump2slide = max([max(question.jump2slides) for question in self.questions])
+
+        # set minimum slide (end group) as max j2s + 1
+        self.min_slide = self.max_jump2slide + 1
+
+    def set_questions(self, questions: Sequence[Question]):
+        """Set a sequence of questions as Cluster questions"""
+        self.questions = list(questions)
+
+        self.min_jump2slide = min([question.jump2slide for question in self.questions])
+        self.max_jump2slide = max([max(question.jump2slides) for question in self.questions])
+        self.min_slide = self.max_jump2slide + 1
+
+    def check(self):
+        """Check sanity cluster"""
+        for question in self.questions:
+            question.check()
+
+    def todict(self):
+        return dict(
+            min_slide_after_cluster=self.min_slide,
+            min_slide_in_cluster=self.min_jump2slide,
+            length=len(self.questions),
+            questions=[question.todict() for question in self.questions]
+        )
+
+    def write_to_file(self, jsonpath: Union[str, os.PathLike]):
+        jsonpath = pathlib.Path(jsonpath)
+
+        with open(jsonpath.with_suffix(".json"), "w") as f:
+            json.dump(self.todict(), f)
+
 
 class Module(Base):
     def __init__(self, number, name, duration, unity):
@@ -116,6 +197,54 @@ class Module(Base):
         assert all(q.jump2slide is not None for q in self.questions), \
             'There are still questions without the slide to jump yet!'
         self.questions_sorted.sort(key=lambda q: q.jump2slide)
+
+    def create_clusters(self) -> Sequence[QuestionCluster]:
+        # take sorted questions (doesn't change clustering)
+        questions = self.questions_sorted
+
+        # create ndarray
+        X = np.array([q.jump2slide for q in questions]).reshape(-1, 1)
+
+        # media di clusters di 5 o 6 elementi
+        # max() per imporre minimo = 1
+        n = max(len(questions) // 5, 1)
+
+        # do agglomerative clustering
+        labels = Clustering(n, linkage='complete').fit_predict(X)
+
+        # create a list of questions for each label found by clustering
+        questions_lists = defaultdict(list)
+
+        for question, label in zip(questions, labels):
+            questions_lists[label].append(question)
+
+        clusters = []
+        for label, questions_list in questions_lists.items():
+            cluster = QuestionCluster(tag=label)
+            cluster.set_questions(questions_list)
+            clusters.append(cluster)
+
+        return clusters
+
+    def write_cluster(self):
+        clusters = self.create_clusters()
+
+        thedict = dict(
+            length=len(clusters),
+            clusters=[cluster.todict() for cluster in clusters]
+        )
+
+        name = f"uf_{self.unity.number + 1}_m_{self.number + 1}.json"
+        path = pathlib.Path("generated") / "cluster_json"
+
+        # create path
+        os.makedirs(path, exist_ok=True)
+
+        # and set it to json file
+        path /= name
+
+        with open(path, "w") as f:
+            json.dump(thedict, f, indent=2)
 
     def check(self):
         assert self.questions, 'No question found for module {}'.format(self.name)
@@ -141,7 +270,9 @@ class Module(Base):
             if Clustering:
                 X = np.array([q.jump2slide for q in qs]).reshape(-1, 1)
                 # media di clusters di 5 o 6 elementi
-                n = int(len(qs) / 5)
+                n = len(qs) // 5
+                if n < 1:
+                    n = 1
                 labels = Clustering(n, linkage='complete').fit_predict(X)
                 old_label = None
                 cnt = 0

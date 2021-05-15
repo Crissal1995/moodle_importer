@@ -7,11 +7,6 @@ import argparse
 from xml_builder import generate_xmls_per_module
 import model
 
-uf_re = re.compile(r'(uf)[^a-z]*([^(]+)[(]?(\d+)?', re.I)
-module_re = re.compile(r'(modulo)[^a-z]*([^(]+)[(]?(\d+)?', re.I)
-question_re = re.compile(r"(.+)(?=\s+\(?slide)\s+\(?slide[s]?\s+((\d+[\s-]?)+)", re.I)
-answer_re = re.compile(r'(a?\.?\s*(.+?)(?=b\.))(b\.\s+(.+?)(?=c\.))(c\.(\s+.+))', re.I)
-
 
 def populate_document(doc_pathlib):
     counts = defaultdict(int)
@@ -22,17 +17,19 @@ def populate_document(doc_pathlib):
     except Exception as e:
         raise ValueError(str(e) + '.\nDocumento Word non valido oppure aperto e non salvato!')
 
+    uf_re = re.compile(r'(uf)[^a-z]*([^(]+)[(]?(\d+)?', re.IGNORECASE)
+    module_re = re.compile(r'(modulo)[^a-z]*([^(]+)[(]?(\d+)?', re.IGNORECASE)
+    question_re = re.compile(r'(domanda)[^a-zA-Z]*(.+)', re.IGNORECASE)
+    answer_re = re.compile(r'(RISPOSTA\s?[A-Z]?)[^\w]*(ok(?=\s+|-+))?[^\w]*(.*)')
+
     for paragraph in parsed_doc.paragraphs:
         text = paragraph.text.strip()
         # eliminiamo caratteri unicode che danno problemi
         text = text.replace('–', '-').replace('’', "'").replace('‘', "'").replace('“', '"').replace('”', '"')
         for char, repl in zip('aeiouAEIOU', 'àèìòùÀÈÌÒÙ'):  # fix lettere accentate
             text = text.replace("{}'".format(char), repl)
-        text = re.sub(r'\s+', ' ', text).strip()  # sostituiamo più spazi con uno solo + strip
-        test = text.lower()
-
-        if not test:
-            continue
+        text = re.sub(r'\s+', ' ', text)  # sostituiamo più spazi con uno solo
+        test = text.lower().strip()
 
         if test.startswith('uf'):
             groups = uf_re.search(text).groups()
@@ -61,30 +58,18 @@ def populate_document(doc_pathlib):
             counts['module'] += 1
             counts['question'] = 0
 
-        else:  # domanda, risposta, o entrambe!
+        elif test.startswith('domanda'):
+            assert module_before, 'Found question without module!'
 
-            # se questo if è vero, ho sia domanda che risposte sulla stessa riga
-            if question_re.match(text) and answer_re.match(question_re.sub("", text).strip()):
-                question_before = parse_question(text, counts, module_before)
-                parse_answer(text, question_before)
+            name = question_re.search(text).group(2)
+            question = model.Question(counts['question'], counts['global_question'], name, module=module_before)
+            module_before.add_question(question)
 
-                # reset question
-                question_before = None
+            question_before = question
 
-            # altrimenti ho solo la domanda
-            elif question_re.match(text):
-                question_before = parse_question(text, counts, module_before)
+            counts['question'] += 1
+            counts['global_question'] += 1
 
-            # altrimenti ho solo le risposte
-            elif answer_re.match(text):
-                parse_answer(text, question_before)
-                question_before = None
-
-            # altrimenti ho qualche errore
-            else:
-                raise ValueError(f"cannot match anything with: {text}")
-
-        """
         elif test.startswith('risposta'):
             assert question_before, 'Found answer without question!'
 
@@ -99,10 +84,8 @@ def populate_document(doc_pathlib):
             assert question_before, 'Found jump to slide without question!'
             slides = set([int(el) for el in re.findall(r'(\d+)', test)])
             question_before.set_jump2slides(slides)
-        """
 
     # sort questions based on jump2slide
-    # and also save clusters to json file
     for uf in model_doc.unities:
         for module in uf.modules:
             module.sort_questions()
@@ -111,49 +94,7 @@ def populate_document(doc_pathlib):
     return model_doc
 
 
-def parse_question(text, counts, module_before):
-    assert module_before, 'Found question without module!'
-
-    # parse question text and slides number
-    qname, slides = question_re.match(text).group(1, 2)
-
-    # create model Question
-    question = model.Question(counts["question"], counts["global_question"], qname, module_before)
-
-    # add Question to module before this question
-    module_before.add_question(question)
-
-    # parse slides from regex match
-    slides = set([int(elem) for elem in slides.split("-")])
-    question.set_jump2slides(slides)
-
-    # increment counters
-    counts['question'] += 1
-    counts['global_question'] += 1
-
-    return question
-
-
-def parse_answer(text, question_before):
-    assert question_before, 'Found answers without question!'
-
-    # parse answer
-    a, b, c = answer_re.match(question_re.sub("", text).strip()).group(2, 4, 6)
-
-    for elem in (a, b, c):
-        elem = elem.strip()  # remove start characters
-        if elem.startswith("ok"):
-            elem = elem[2:].strip()
-            is_correct = True
-        else:
-            is_correct = False
-        answer = model.Answer(elem, is_correct=is_correct)
-        question_before.add_answer(answer)
-
-    if not any(answer.is_correct for answer in question_before.answers):
-        raise ValueError(f"No correct answer found for {question_before.name}")
-
-
+# begin main
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', type=str, help='The folder of Word documents to parse')
