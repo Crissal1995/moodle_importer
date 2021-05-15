@@ -1,6 +1,7 @@
 import html
 import os
-import shutil
+from typing import Union, Sequence
+from collections import defaultdict
 import textwrap
 import pathlib
 from abc import ABC
@@ -41,6 +42,13 @@ class Answer(Base):
     @property
     def htmlstr(self):
         return self.html
+
+    def todict(self):
+        return dict(
+            is_correct=bool(self.is_correct),
+            text=self.text,
+            html=self.html,
+        )
 
 
 class Question(Base):
@@ -110,7 +118,7 @@ class Question(Base):
             number=self.number + 1,
             global_number=self.global_number + 1,
             jump2slide=self.jump2slide,
-            answers=[answer.htmlstr for answer in self.answers]
+            answers=[answer.todict() for answer in self.answers]
         )
 
 
@@ -144,6 +152,14 @@ class QuestionCluster(Base):
         # set minimum slide (end group) as max j2s + 1
         self.min_slide = self.max_jump2slide + 1
 
+    def set_questions(self, questions: Sequence[Question]):
+        """Set a sequence of questions as Cluster questions"""
+        self.questions = list(questions)
+
+        self.min_jump2slide = min([question.jump2slide for question in self.questions])
+        self.max_jump2slide = max([max(question.jump2slides) for question in self.questions])
+        self.min_slide = self.max_jump2slide + 1
+
     def check(self):
         """Check sanity cluster"""
         for question in self.questions:
@@ -151,17 +167,16 @@ class QuestionCluster(Base):
 
     def todict(self):
         return dict(
-            min_slide=self.min_slide,
-            min_jump=self.min_jump2slide,
+            min_slide_after_cluster=self.min_slide,
+            min_slide_in_cluster=self.min_jump2slide,
             length=len(self.questions),
             questions=[question.todict() for question in self.questions]
         )
 
-    def write_to_file(self, jsonpath: str):
-        if not jsonpath.lower().endswith(".json"):
-            jsonpath += ".json"
+    def write_to_file(self, jsonpath: Union[str, os.PathLike]):
+        jsonpath = pathlib.Path(jsonpath)
 
-        with open(jsonpath, "w") as f:
+        with open(jsonpath.with_suffix(".json"), "w") as f:
             json.dump(self.todict(), f)
 
 
@@ -183,46 +198,53 @@ class Module(Base):
             'There are still questions without the slide to jump yet!'
         self.questions_sorted.sort(key=lambda q: q.jump2slide)
 
-    def create_clusters(self) -> [QuestionCluster]:
+    def create_clusters(self) -> Sequence[QuestionCluster]:
+        # take sorted questions (doesn't change clustering)
         questions = self.questions_sorted
+
+        # create ndarray
         X = np.array([q.jump2slide for q in questions]).reshape(-1, 1)
 
         # media di clusters di 5 o 6 elementi
         # max() per imporre minimo = 1
         n = max(len(questions) // 5, 1)
 
+        # do agglomerative clustering
         labels = Clustering(n, linkage='complete').fit_predict(X)
 
-        clusters = dict()
-        for label in np.unique(labels):
+        # create a list of questions for each label found by clustering
+        questions_lists = defaultdict(list)
+
+        for question, label in zip(questions, labels):
+            questions_lists[label].append(question)
+
+        clusters = []
+        for label, questions_list in questions_lists.items():
             cluster = QuestionCluster(tag=label)
-
-            for i, inner_label in enumerate(labels):
-                if label == inner_label:
-                    cluster.add_question(questions[i])
-
-            clusters[label] = cluster
+            cluster.set_questions(questions_list)
+            clusters.append(cluster)
 
         return clusters
 
     def write_cluster(self):
         clusters = self.create_clusters()
 
-        dicts = []
-
-        for key, cluster in clusters.items():
-            dicts.append(cluster.todict())
+        thedict = dict(
+            length=len(clusters),
+            clusters=[cluster.todict() for cluster in clusters]
+        )
 
         name = f"uf_{self.unity.number + 1}_m_{self.number + 1}.json"
         path = pathlib.Path("generated") / "cluster_json"
 
-        # shutil.rmtree(path, ignore_errors=True)
+        # create path
         os.makedirs(path, exist_ok=True)
 
+        # and set it to json file
         path /= name
 
         with open(path, "w") as f:
-            json.dump(dicts, f, indent=2, sort_keys=True)
+            json.dump(thedict, f, indent=2)
 
     def check(self):
         assert self.questions, 'No question found for module {}'.format(self.name)
