@@ -243,8 +243,8 @@ class Module(Base):
         # and set it to json file
         path /= name
 
-        with open(path, "w") as f:
-            json.dump(thedict, f, indent=2)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(thedict, f, indent=2, ensure_ascii=False)
 
     def check(self):
         assert self.questions, 'No question found for module {}'.format(self.name)
