@@ -6,6 +6,7 @@ import textwrap
 import pathlib
 from abc import ABC
 import re
+from collections import Counter
 from sklearn.cluster import AgglomerativeClustering as Clustering
 import numpy as np
 import json
@@ -128,10 +129,6 @@ class QuestionCluster(Base):
     questions = []
     min_jump2slide = None
     max_jump2slide = None
-    min_slide = None
-
-    def __init__(self, tag: int):
-        self.tag = tag
 
     def add_question(self, question: Question):
         """Add a question to the cluster"""
@@ -149,16 +146,12 @@ class QuestionCluster(Base):
         else:
             self.max_jump2slide = max([max(question.jump2slides) for question in self.questions])
 
-        # set minimum slide (end group) as max j2s + 1
-        self.min_slide = self.max_jump2slide + 1
-
     def set_questions(self, questions: Sequence[Question]):
         """Set a sequence of questions as Cluster questions"""
         self.questions = list(questions)
 
         self.min_jump2slide = min([question.jump2slide for question in self.questions])
-        self.max_jump2slide = max([max(question.jump2slides) for question in self.questions])
-        self.min_slide = self.max_jump2slide + 1
+        self.max_jump2slide = max([question.jump2slide for question in self.questions])
 
     def check(self):
         """Check sanity cluster"""
@@ -167,9 +160,9 @@ class QuestionCluster(Base):
 
     def todict(self):
         return dict(
-            min_slide_after_cluster=self.min_slide,
             min_slide_in_cluster=self.min_jump2slide,
-            length=len(self.questions),
+            max_slide_in_cluster=self.max_jump2slide,
+            count_questions=len(self.questions),
             questions=[question.todict() for question in self.questions]
         )
 
@@ -210,7 +203,16 @@ class Module(Base):
         n = max(len(questions) // 5, 1)
 
         # do agglomerative clustering
-        labels = Clustering(n, linkage='complete').fit_predict(X)
+        linkage = "ward"
+        labels = Clustering(n, linkage=linkage).fit_predict(X)
+        treshold = 3
+        while n and any(value < treshold for value in Counter(labels).values()):
+            n -= 1
+            labels = Clustering(n, linkage=linkage).fit_predict(X)
+
+        if any(value < treshold for value in Counter(labels).values()):
+            msg = f"Cannot find clustering with counts labels >= {treshold}"
+            raise RuntimeError(msg)
 
         # create a list of questions for each label found by clustering
         questions_lists = defaultdict(list)
@@ -220,7 +222,7 @@ class Module(Base):
 
         clusters = []
         for label, questions_list in questions_lists.items():
-            cluster = QuestionCluster(tag=label)
+            cluster = QuestionCluster()
             cluster.set_questions(questions_list)
             clusters.append(cluster)
 
@@ -230,7 +232,7 @@ class Module(Base):
         clusters = self.create_clusters()
 
         thedict = dict(
-            length=len(clusters),
+            count_clusters=len(clusters),
             clusters=[cluster.todict() for cluster in clusters]
         )
 
