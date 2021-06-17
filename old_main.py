@@ -54,6 +54,8 @@ def populate_document(doc_pathlib):
 
             module_before = module
             question_before = None
+            j2s_before = None
+
 
             counts['module'] += 1
             counts['question'] = 0
@@ -67,6 +69,9 @@ def populate_document(doc_pathlib):
 
             question_before = question
 
+            if j2s_before:
+                question_before.set_jump2slides(j2s_before)
+
             counts['question'] += 1
             counts['global_question'] += 1
 
@@ -79,11 +84,15 @@ def populate_document(doc_pathlib):
 
             answer = model.Answer(name, is_correct)
             question_before.add_answer(answer)
-
         elif test.replace('*', '').strip().startswith('slide'):
-            assert question_before, 'Found jump to slide without question!'
+            #assert question_before, 'Found jump to slide without question!'
             slides = set([int(el) for el in re.findall(r'(\d+)', test)])
-            question_before.set_jump2slides(slides)
+            if not question_before:
+                j2s_before = slides
+            elif not question_before.jump2slide or len(question_before.jump2slides) == 0:
+                question_before.set_jump2slides(slides)
+                j2s_before = None
+
 
     # sort questions based on jump2slide
     for uf in model_doc.unities:
