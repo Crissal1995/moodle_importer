@@ -106,7 +106,7 @@ def populate_document(doc_pathlib):
     for uf in model_doc.unities:
         for module in uf.modules:
             module.sort_questions()
-            module.write_cluster()
+            module.write_cluster(root=model_doc.name)
 
     return model_doc
 

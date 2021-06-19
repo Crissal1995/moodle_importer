@@ -228,7 +228,7 @@ class Module(Base):
 
         return clusters
 
-    def write_cluster(self):
+    def write_cluster(self, root=None):
         clusters = self.create_clusters()
 
         thedict = dict(
@@ -236,8 +236,9 @@ class Module(Base):
             clusters=[cluster.todict() for cluster in clusters]
         )
 
+        root = root or ""
         name = f"uf_{self.unity.number + 1}_m_{self.number + 1}.json"
-        path = pathlib.Path("generated") / "cluster_json"
+        path = pathlib.Path("generated") / root / "cluster_json"
 
         # create path
         os.makedirs(path, exist_ok=True)
