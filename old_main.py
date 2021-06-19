@@ -10,7 +10,7 @@ import model
 
 def populate_document(doc_pathlib):
     counts = defaultdict(int)
-    uf_before, module_before, question_before = [None] * 3
+    uf_before, module_before, question_before, j2s_before = [None] * 4
     model_doc = model.Document(doc_pathlib.stem)
     try:
         parsed_doc = docx.Document(str(doc_pathlib))
@@ -56,7 +56,6 @@ def populate_document(doc_pathlib):
             question_before = None
             j2s_before = None
 
-
             counts['module'] += 1
             counts['question'] = 0
 
@@ -85,14 +84,23 @@ def populate_document(doc_pathlib):
             answer = model.Answer(name, is_correct)
             question_before.add_answer(answer)
         elif test.replace('*', '').strip().startswith('slide'):
-            #assert question_before, 'Found jump to slide without question!'
+            # assert question_before, 'Found jump to slide without question!'
             slides = set([int(el) for el in re.findall(r'(\d+)', test)])
-            if not question_before:
-                j2s_before = slides
-            elif not question_before.jump2slide or len(question_before.jump2slides) == 0:
-                question_before.set_jump2slides(slides)
-                j2s_before = None
 
+            # se ho una question before e trovo nuove slides, se
+            # il controllo di validità fallisce allora queste slides sono le sue
+            if question_before:
+                try:
+                    question_before.check()
+                except AssertionError:
+                    question_before.set_jump2slides(slides)
+                # se invece non fallisce, allora queste nuove slides vanno memorizzate
+                # per la prossima question
+                else:
+                    j2s_before = slides
+            # se non ho una question before, allora salva queste slides
+            else:
+                j2s_before = slides
 
     # sort questions based on jump2slide
     for uf in model_doc.unities:
