@@ -1,7 +1,8 @@
+import os
+
 from lxml.etree import Element, SubElement, tostring, parse, XMLSchema, CDATA
 import pathlib
 import warnings
-from os import makedirs
 
 
 def generate_xmls_per_module(doc, print_=True):
@@ -108,8 +109,8 @@ def make_xml(module, fname, docname, print_):
     xml_obj = tostring(root, pretty_print=True, xml_declaration=True, encoding='UTF-8')
 
     # write to xml file
-    generated_dir = pathlib.Path() / 'generated' / docname
-    makedirs(generated_dir, exist_ok=True)
+    generated_dir = pathlib.Path() / 'generated' / docname / "questions_xml"
+    os.makedirs(generated_dir, exist_ok=True)
     with open(generated_dir / fname, 'wb') as f:
         f.write(xml_obj)
 
