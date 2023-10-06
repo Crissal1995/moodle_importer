@@ -130,3 +130,5 @@ generated/*
 questions_dir/*
 
 *.docx
+
+.DS_Store

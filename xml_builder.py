@@ -53,7 +53,7 @@ def make_xml(module, fname, docname, print_):
         defaultgrade.text = str(float(1))
 
         penalty = SubElement(question, 'penalty')
-        penalty.text = str(float(1/3))
+        penalty.text = str(float(0))
 
         hidden = SubElement(question, 'hidden')
         hidden.text = str(0)
